@@ -2,6 +2,9 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
+using API.Controllers.Middleware;
+using API.Errors;
+using API.Extensions;
 using API.Helpers;
 using Core.Interfaces;
 using Infrastructure.Data;
@@ -14,7 +17,7 @@ using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
-
+using Microsoft.OpenApi.Models;
 
 namespace API
 {
@@ -36,18 +39,24 @@ namespace API
             services.AddControllers();
             services.AddDbContext<StoreContext>(x => 
                 x.UseSqlite(_config.GetConnectionString("DefaultConnection")));
-            services.AddScoped<IProductRepository,ProductRepository>();
-            services.AddScoped(typeof(IGenericRepository<>),(typeof(GenericRepository<>)));
+            
+            services.AddApplicationServices();
+
+            services.AddSwaggerDocumentation();
             services.AddAutoMapper(typeof(MappingProfiles));
+            
         }
 
         // This method gets called by the runtime. Use this method to configure the HTTP request pipeline.
         public void Configure(IApplicationBuilder app, IWebHostEnvironment env)
         {
+            app.UseMiddleware<ExceptionMiddleware>();
             if (env.IsDevelopment())
             {
-                app.UseDeveloperExceptionPage();
+                
             }
+
+            app.UseStatusCodePagesWithReExecute("/errors/{0}");
 
             app.UseHttpsRedirection();
 
@@ -55,7 +64,7 @@ namespace API
             app.UseStaticFiles();
 
             app.UseAuthorization();
-
+            app.UseSwaggerDocumentation();
 
             app.UseEndpoints(endpoints =>
             {
